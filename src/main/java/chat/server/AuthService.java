@@ -1,5 +1,7 @@
 package chat.server;
 
+import chat.server.models.User;
+
 import java.util.Optional;
 
 /**
@@ -23,5 +25,7 @@ public interface AuthService {
      * @param pass
      * @return никнейм если найден или null, если такого нет
      */
-    Optional<String> getNickByLoginAndPass(String login, String pass);
+    Optional<User> getNickByLoginAndPass(String login, String pass);
+
+    boolean changeNickname(String id, String newNick);
 }

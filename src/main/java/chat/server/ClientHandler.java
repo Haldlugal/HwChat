@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.util.Optional;
 
 import chat.constants.Constants;
+import chat.server.models.User;
 
 /**
  * Обработчик для конкретного клиента.
@@ -17,7 +18,7 @@ public class ClientHandler {
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
-    private String name;
+    private User user;
 
     public ClientHandler(MyServer server, Socket socket) {
         try {
@@ -46,14 +47,15 @@ public class ClientHandler {
         while (true) {
             String str = in.readUTF();
             if (str.startsWith(Constants.AUTH_COMMAND)) {
-                String[] tokens = str.split("\\s+");    //3
-                Optional<String> nick = server.getAuthService().getNickByLoginAndPass(tokens[1], tokens[2]);
-                if (nick.isPresent()) {
+                String[] tokens = str.split("\\s+");
+                Optional<User> user = server.getAuthService().getNickByLoginAndPass(tokens[1], tokens[2]);
+
+                if (user.isPresent()) {
                     //Дописать проверку что такого ника нет в чате(*)
                     //Авторизовались
-                    name = nick.get();
-                    sendMessage(Constants.AUTH_OK_COMMAND + " " + nick);
-                    server.broadcastMessage(nick + " вошел в чят");
+                    this.user = user.get();
+                    sendMessage(Constants.AUTH_OK_COMMAND + " " + this.user.nick);
+                    server.broadcastMessage(this.user.nick + " вошел в чат");
                     server.broadcastMessage(server.getActiveClients());
                     server.subscribe(this);
                     return;
@@ -78,24 +80,32 @@ public class ClientHandler {
             //hint: можем получать команду
             if (messageFromClient.startsWith(Constants.CLIENTS_LIST_COMMAND)) {
                 sendMessage(server.getActiveClients());
+            } else if (messageFromClient.startsWith(Constants.CHANGE_NICK)) {
+                String newNick = messageFromClient.split("\\s+")[1];
+                boolean result = server.getAuthService().changeNickname(user.id, newNick);
+                if (result) {
+                    server.broadcastMessage(user.nick + " сменил ник на " + newNick);
+                    user.nick = newNick;
+                } else {
+                    sendMessage("Не удалось сменить ник");
+                }
             } else {
-
-                System.out.println("Сообщение от " + name + ": " + messageFromClient);
+                System.out.println("Сообщение от " + user.nick + ": " + messageFromClient);
                 if (messageFromClient.equals(Constants.END_COMMAND)) {
                     break;
                 }
-                server.broadcastMessage(name + ": " + messageFromClient);
+                server.broadcastMessage(user.nick + ": " + messageFromClient);
             }
         }
     }
 
     public String getName() {
-        return name;
+        return user.nick;
     }
 
     private void closeConnection() {
         server.unsubscribe(this);
-        server.broadcastMessage(name + " вышел из чята");
+        server.broadcastMessage(user.nick + " вышел из чата");
         try {
             in.close();
         } catch (IOException ex) {
