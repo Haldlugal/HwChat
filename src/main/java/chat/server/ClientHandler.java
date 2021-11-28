@@ -76,6 +76,8 @@ public class ClientHandler {
 
     private void readMessage() throws IOException {
         while (true) {
+
+            //TODO chat history
             String messageFromClient = in.readUTF();
             //hint: можем получать команду
             if (messageFromClient.startsWith(Constants.CLIENTS_LIST_COMMAND)) {
