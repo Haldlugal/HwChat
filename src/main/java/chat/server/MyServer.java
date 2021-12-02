@@ -54,12 +54,7 @@ public class MyServer {
     }
 
     public synchronized void broadcastMessage(String message) {
-
         clients.forEach(client -> client.sendMessage(message));
-
-        /*for (ClientHandler client : clients) {
-            client.sendMessage(message);
-        }*/
     }
 
     public synchronized void subscribe(ClientHandler client) {
@@ -76,9 +71,6 @@ public class MyServer {
                 .map(c -> c.getName())
                 .collect(Collectors.joining(" "))
         );
-       /* for (ClientHandler clientHandler : clients) {
-            sb.append(clientHandler.getName()).append(" ");
-        }*/
         return sb.toString();
     }
 }
