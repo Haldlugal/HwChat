@@ -1,9 +1,9 @@
 package chat.server;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import chat.constants.Constants;
@@ -14,13 +14,15 @@ import chat.server.models.User;
  */
 public class ClientHandler {
 
-    private MyServer server;
-    private Socket socket;
-    private DataInputStream in;
-    private DataOutputStream out;
+    private final MyServer server;
+    private final Socket socket;
+    private final DataInputStream in;
+    private final DataOutputStream out;
     private User user;
+    BufferedWriter writer = new BufferedWriter(new FileWriter("src/main/java/chat/logs/logs.txt", true));
+    BufferedReader reader = new BufferedReader(new FileReader("src/main/java/chat/logs/logs.txt"));
 
-    public ClientHandler(MyServer server, Socket socket) {
+    public ClientHandler(MyServer server, Socket socket) throws IOException {
         try {
             this.server = server;
             this.socket = socket;
@@ -41,8 +43,6 @@ public class ClientHandler {
         }
     }
 
-    // /auth login pass
-
     private void authentification() throws IOException {
         while (true) {
             String str = in.readUTF();
@@ -51,19 +51,41 @@ public class ClientHandler {
                 Optional<User> user = server.getAuthService().getNickByLoginAndPass(tokens[1], tokens[2]);
 
                 if (user.isPresent()) {
-                    //Дописать проверку что такого ника нет в чате(*)
-                    //Авторизовались
+                    for (int i = 0; i < 1000; i++) {
+                        writer.write("test" + i + "\n");
+                    }
                     this.user = user.get();
                     sendMessage(Constants.AUTH_OK_COMMAND + " " + this.user.nick);
                     server.broadcastMessage(this.user.nick + " вошел в чат");
                     server.broadcastMessage(server.getActiveClients());
                     server.subscribe(this);
+                    List<String> logs = this.getLogs();
+                    int i =0;
+                    for (String log : logs) {
+                        i++;
+                        sendMessage(log);
+                    }
+                    System.out.println("count: " + i);
                     return;
                 } else {
                     sendMessage("Неверные логин/пароль");
                 }
             }
         }
+    }
+
+    List<String> getLogs() throws IOException{
+        List<String> strings = new ArrayList<>();
+        String str;
+        int i = 0;
+        while((str = reader.readLine()) != null) {
+            strings.add(str);
+            i++;
+            if (i > 100) {
+                strings.remove(0);
+            }
+        }
+        return strings;
     }
 
     public void sendMessage(String message) {
@@ -76,6 +98,7 @@ public class ClientHandler {
 
     private void readMessage() throws IOException {
         while (true) {
+            //TODO chat history
             String messageFromClient = in.readUTF();
             //hint: можем получать команду
             if (messageFromClient.startsWith(Constants.CLIENTS_LIST_COMMAND)) {
@@ -90,11 +113,13 @@ public class ClientHandler {
                     sendMessage("Не удалось сменить ник");
                 }
             } else {
-                System.out.println("Сообщение от " + user.nick + ": " + messageFromClient);
                 if (messageFromClient.equals(Constants.END_COMMAND)) {
                     break;
                 }
-                server.broadcastMessage(user.nick + ": " + messageFromClient);
+                System.out.println("test");
+                String finalMessage = user.nick + ": " + messageFromClient;
+                writer.write(finalMessage + "\n");
+                server.broadcastMessage(finalMessage);
             }
         }
     }
@@ -106,6 +131,7 @@ public class ClientHandler {
     private void closeConnection() {
         server.unsubscribe(this);
         server.broadcastMessage(user.nick + " вышел из чата");
+
         try {
             in.close();
         } catch (IOException ex) {
@@ -121,5 +147,12 @@ public class ClientHandler {
         } catch (IOException ex) {
             //ignore
         }
+        try {
+            writer.close();
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }
