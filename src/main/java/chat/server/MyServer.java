@@ -5,6 +5,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import chat.constants.Constants;
@@ -24,6 +26,11 @@ public class MyServer {
      */
     private List<ClientHandler> clients;
 
+    private ExecutorService executorService = Executors.newCachedThreadPool();
+
+    public ExecutorService getExecutorService() {
+        return executorService;
+    }
 
     public AuthService getAuthService() {
         return authService;
@@ -53,6 +60,7 @@ public class MyServer {
         }
     }
 
+
     public synchronized void broadcastMessage(String message) {
         clients.forEach(client -> client.sendMessage(message));
     }
@@ -72,5 +80,9 @@ public class MyServer {
                 .collect(Collectors.joining(" "))
         );
         return sb.toString();
+    }
+
+    public void shutdown() {
+        executorService.shutdown();
     }
 }

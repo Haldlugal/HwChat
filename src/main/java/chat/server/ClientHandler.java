@@ -28,7 +28,7 @@ public class ClientHandler {
             this.socket = socket;
             this.in = new DataInputStream(socket.getInputStream());
             this.out = new DataOutputStream(socket.getOutputStream());
-            new Thread(() -> {
+            server.getExecutorService().execute(() -> {
                 try {
                     authentification();
                     readMessage();
@@ -37,7 +37,17 @@ public class ClientHandler {
                 } finally {
                     closeConnection();
                 }
-            }).start();
+            });
+//            new Thread(() -> {
+//                try {
+//                    authentification();
+//                    readMessage();
+//                } catch (IOException ex) {
+//                    ex.printStackTrace();
+//                } finally {
+//                    closeConnection();
+//                }
+//            }).start();
         } catch (IOException ex) {
             throw new RuntimeException("Проблемы при создании обработчика");
         }
@@ -98,9 +108,7 @@ public class ClientHandler {
 
     private void readMessage() throws IOException {
         while (true) {
-            //TODO chat history
             String messageFromClient = in.readUTF();
-            //hint: можем получать команду
             if (messageFromClient.startsWith(Constants.CLIENTS_LIST_COMMAND)) {
                 sendMessage(server.getActiveClients());
             } else if (messageFromClient.startsWith(Constants.CHANGE_NICK)) {
@@ -116,7 +124,6 @@ public class ClientHandler {
                 if (messageFromClient.equals(Constants.END_COMMAND)) {
                     break;
                 }
-                System.out.println("test");
                 String finalMessage = user.nick + ": " + messageFromClient;
                 writer.write(finalMessage + "\n");
                 server.broadcastMessage(finalMessage);

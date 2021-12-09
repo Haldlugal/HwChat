@@ -7,6 +7,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -27,7 +29,7 @@ public class EchoClient extends JFrame {
     private DataInputStream dataInputStream;
     private DataOutputStream dataOutputStream;
     private String login;
-
+    private ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     public EchoClient() {
         try {
@@ -42,7 +44,7 @@ public class EchoClient extends JFrame {
         socket = new Socket(Constants.SERVER_ADDRESS, Constants.SERVER_PORT);
         dataInputStream = new DataInputStream(socket.getInputStream());
         dataOutputStream = new DataOutputStream(socket.getOutputStream());
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 while (true) {
                     String messageFromServer = dataInputStream.readUTF();
@@ -66,11 +68,17 @@ public class EchoClient extends JFrame {
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-        }).start();
+        });
     }
 
 
     private void closeConnection() {
+        try {
+            executorService.shutdown();
+        } catch (Exception ex) {
+
+        }
+
         try {
             dataOutputStream.close();
         } catch (Exception ex) {
