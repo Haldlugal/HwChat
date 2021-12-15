@@ -8,6 +8,8 @@ import java.util.Optional;
 
 import chat.constants.Constants;
 import chat.server.models.User;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Обработчик для конкретного клиента.
@@ -21,6 +23,7 @@ public class ClientHandler {
     private User user;
     BufferedWriter writer = new BufferedWriter(new FileWriter("src/main/java/chat/logs/logs.txt", true));
     BufferedReader reader = new BufferedReader(new FileReader("src/main/java/chat/logs/logs.txt"));
+    public static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
     public ClientHandler(MyServer server, Socket socket) throws IOException {
         try {
@@ -28,6 +31,7 @@ public class ClientHandler {
             this.socket = socket;
             this.in = new DataInputStream(socket.getInputStream());
             this.out = new DataOutputStream(socket.getOutputStream());
+            logger.warn("Клиент подключился");
             new Thread(() -> {
                 try {
                     authentification();
@@ -98,25 +102,27 @@ public class ClientHandler {
 
     private void readMessage() throws IOException {
         while (true) {
-            //TODO chat history
             String messageFromClient = in.readUTF();
-            //hint: можем получать команду
             if (messageFromClient.startsWith(Constants.CLIENTS_LIST_COMMAND)) {
+                logger.trace("Выдаем список клиентов " + this.user.nick);
                 sendMessage(server.getActiveClients());
             } else if (messageFromClient.startsWith(Constants.CHANGE_NICK)) {
+                logger.trace(user.nick + " пытается сменить ник");
                 String newNick = messageFromClient.split("\\s+")[1];
                 boolean result = server.getAuthService().changeNickname(user.id, newNick);
                 if (result) {
+                    logger.trace(user.nick + " сменил ник на " + newNick);
                     server.broadcastMessage(user.nick + " сменил ник на " + newNick);
                     user.nick = newNick;
                 } else {
+                    logger.warn(user.nick + " не удалось сменить ник");
                     sendMessage("Не удалось сменить ник");
                 }
             } else {
                 if (messageFromClient.equals(Constants.END_COMMAND)) {
                     break;
                 }
-                System.out.println("test");
+                logger.trace(user.nick + ": " + messageFromClient);
                 String finalMessage = user.nick + ": " + messageFromClient;
                 writer.write(finalMessage + "\n");
                 server.broadcastMessage(finalMessage);
@@ -131,7 +137,7 @@ public class ClientHandler {
     private void closeConnection() {
         server.unsubscribe(this);
         server.broadcastMessage(user.nick + " вышел из чата");
-
+        logger.trace(user.nick + " вышел из чата");
         try {
             in.close();
         } catch (IOException ex) {
