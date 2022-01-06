@@ -8,12 +8,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import chat.constants.Constants;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Логика сервера.
  */
 public class MyServer {
-
+    public static final Logger logger = LogManager.getLogger(MyServer.class);
     /**
      * Сервис аутентификации.
      */
@@ -31,20 +33,19 @@ public class MyServer {
 
     public MyServer() {
         try (ServerSocket server = new ServerSocket(Constants.SERVER_PORT)) {
+
             authService = new DbAuthService();
             authService.start();
-
             clients = new ArrayList<>();
 
+            logger.trace("Сервер готов");
             while (true) {
-                System.out.println("Сервер ожидает подключения!");
                 Socket socket = server.accept();
-                System.out.println("Клиент подключился");
                 new ClientHandler(this, socket);
             }
 
         } catch (IOException ex) {
-            System.out.println("Ошибка в работе сервера.");
+            logger.error("Ошибка в работе сервера.");
             ex.printStackTrace();
         } finally {
             if (authService != null) {
